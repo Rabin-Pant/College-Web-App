@@ -145,12 +145,12 @@ http://localhost:3000
 
 👤 Default Users
 ```bash
-Role	Email	Password	Description
-Admin	admin@yourcollege.edu
-	Admin@123	Full system access
-Teacher	teacher@yourcollege.edu
-	Test@123	Dr. John Smith
-Student	student@yourcollege.edu
+Role	Email	                 Password	Description
+Admin	admin@yourcollege.edu    Admin@123  Full system access
+	
+Teacher	teacher@yourcollege.edu  Test@123	Dr. John Smith
+	
+Student	student@yourcollege.edu  Test@123	Jane Doe
 	Test@123	Jane Doe
 ```
 
