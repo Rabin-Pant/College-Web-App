@@ -92,6 +92,7 @@ A comprehensive college management system with role-based access control for **A
 - MySQL 8.0 / MariaDB 11.8
 
 📁 Project Structure
+```bash
 college-app/
 ├── backend/                           # Flask Backend
 │   ├── app.py                        # Main application
@@ -131,7 +132,7 @@ college-app/
         ├── index.js                       # Entry point
         ├── package.json                  # Node dependencies
         └── tailwind.config.js             # Tailwind configuration
-
+```
 ---
 
 ## 📋 Prerequisites
