@@ -212,10 +212,10 @@ Add PDF/Excel export functionality
 
 Rabin Pant
 GitHub: https://github.com/Rabin-Pant
-
+```
 <div align="center">
 
 Made with ❤️ by Rabin Pant
 ⭐ Star this repository if you found it helpful!
 
-</div> ```
+</div> 
