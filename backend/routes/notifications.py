@@ -13,19 +13,32 @@ notification_bp = Blueprint('notifications', __name__)
 @jwt_required()
 @role_required(['teacher', 'admin'])
 def send_notification_to_class(class_id):
-    """Send notification to all students in a class"""
+    """Send notification to all students in a class/section"""
     try:
         user_id = get_jwt_identity()
         data = request.get_json()
         
+        print("="*50)
+        print(f"📡 SEND NOTIFICATION TO CLASS {class_id}")
+        print(f"👤 User ID: {user_id}")
+        print(f"📦 Request data: {data}")
+        print("="*50)
+        
         if not data.get('title') or not data.get('message'):
             return jsonify({'error': 'Title and message are required'}), 400
         
-        # Verify teacher owns the class (if teacher)
+        # Get user role and info
         cursor = mysql.connection.cursor()
-        cursor.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+        cursor.execute("SELECT id, name, role FROM users WHERE id = %s", (user_id,))
         user = cursor.fetchone()
         
+        if not user:
+            cursor.close()
+            return jsonify({'error': 'User not found'}), 404
+        
+        print(f"👤 User: {user['name']} ({user['role']})")
+        
+        # If teacher, verify they are assigned to this section
         if user['role'] == 'teacher':
             cursor.execute("""
                 SELECT ta.id FROM teacher_assignments ta
@@ -34,20 +47,25 @@ def send_notification_to_class(class_id):
             
             if not cursor.fetchone():
                 cursor.close()
-                return jsonify({'error': 'You do not have permission to send notifications to this class'}), 403
+                print(f"❌ Teacher {user_id} not assigned to section {class_id}")
+                return jsonify({'error': 'You are not assigned to this section'}), 403
+            else:
+                print(f"✅ Teacher verified for section {class_id}")
         
         cursor.close()
         
-        # Send notification using model
-        recipients = Notification.send_to_class(
-            class_id=class_id,
-            sender_id=user_id,
-            title=data['title'],
-            message=data['message'],
-            notification_type=data.get('type', 'class_announcement'),
-            link=data.get('link'),
-            priority=data.get('priority', 'normal')
-        )
+        # Use the model method
+        recipients = Notification.send_to_teacher_classes(
+    teacher_user_id=user_id,
+    sender_id=user_id,
+    title=data['title'],
+    message=data['message'],
+    notification_type='class_announcement',  
+    link=data.get('link'),
+    priority=data.get('priority', 'normal')
+)
+        
+        print(f"✅ Successfully sent to {recipients} students")
         
         return jsonify({
             'message': f'Notification sent to {recipients} students',
@@ -55,7 +73,7 @@ def send_notification_to_class(class_id):
         }), 200
         
     except Exception as e:
-        print(f"Error sending notification: {e}")
+        print(f"❌ Error in send_notification_to_class: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -70,6 +88,13 @@ def send_notification_to_all_classes():
         user_id = get_jwt_identity()
         data = request.get_json()
         
+        print("\n" + "="*60)
+        print("📡 SEND TO ALL CLASSES CALLED")
+        print("="*60)
+        print(f"👤 user_id: {user_id}")
+        print(f"📦 data: {data}")
+        print("="*60)
+        
         if not data.get('title') or not data.get('message'):
             return jsonify({'error': 'Title and message are required'}), 400
         
@@ -79,10 +104,12 @@ def send_notification_to_all_classes():
         user = cursor.fetchone()
         cursor.close()
         
+        print(f"👤 user role: {user['role']}")
+        
         recipients = 0
         
         if user['role'] == 'teacher':
-            # Send to all classes taught by this teacher
+            print("📨 Calling send_to_teacher_classes...")
             recipients = Notification.send_to_teacher_classes(
                 teacher_user_id=user_id,
                 sender_id=user_id,
@@ -92,8 +119,9 @@ def send_notification_to_all_classes():
                 link=data.get('link'),
                 priority=data.get('priority', 'normal')
             )
+            print(f"✅ send_to_teacher_classes returned: {recipients}")
         else:  # admin
-            # Admin can send to all students in system
+            print("📨 Admin sending to all students...")
             recipients = Notification.send_to_all_students(
                 sender_id=user_id,
                 title=data['title'],
@@ -103,13 +131,16 @@ def send_notification_to_all_classes():
                 priority=data.get('priority', 'high')
             )
         
+        print(f"🎉 Total recipients: {recipients}")
+        print("="*60 + "\n")
+        
         return jsonify({
             'message': f'Notification sent to {recipients} students',
             'recipients': recipients
         }), 200
         
     except Exception as e:
-        print(f"Error sending notification: {e}")
+        print(f"❌ Error sending notification: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -504,14 +535,31 @@ def delete_notification(notification_id):
 @notification_bp.route('/clear-all', methods=['DELETE'], strict_slashes=False)
 @jwt_required()
 def clear_all_notifications():
-    """Delete all notifications for current user"""
+    """Delete all notifications for current user (Students cannot use this)"""
     try:
         user_id = get_jwt_identity()
+        
+        # Check user role
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        cursor.close()
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Students cannot clear all notifications
+        if user['role'] == 'student':
+            return jsonify({'error': 'Students cannot clear all notifications'}), 403
+        
+        # Admin and Teacher can clear all
         count = Notification.clear_all(user_id)
+        
         return jsonify({
             'message': f'{count} notifications cleared',
             'count': count
         }), 200
+        
     except Exception as e:
         print(f"Error clearing notifications: {e}")
         import traceback

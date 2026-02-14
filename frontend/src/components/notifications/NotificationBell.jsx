@@ -17,16 +17,31 @@ const NotificationBell = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
   const dropdownRef = useRef(null);
 
+  // Debug logging
+  console.log('🔔 NotificationBell rendered');
+  console.log('👤 User:', user);
+  console.log('🔑 isAuthenticated:', isAuthenticated);
+
   useEffect(() => {
+    console.log('📡 NotificationBell mounted');
     if (isAuthenticated) {
+      console.log('✅ User is authenticated, fetching notifications...');
       fetchNotifications();
       // Poll for new notifications every 30 seconds
       const interval = setInterval(fetchUnreadCount, 30000);
       return () => clearInterval(interval);
+    } else {
+      console.log('❌ User not authenticated');
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    console.log('📊 Notifications state updated:', notifications);
+    console.log('🔢 Unread count:', unreadCount);
+  }, [notifications, unreadCount]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -41,11 +56,29 @@ const NotificationBell = () => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
+      setApiError(null);
+      console.log('📡 Fetching notifications from API...');
+      
       const response = await api.get('/notifications/?limit=5');
+      
+      console.log('✅ API Response:', response);
+      console.log('✅ Response data:', response.data);
+      console.log('✅ Notifications array:', response.data.notifications);
+      console.log('✅ Unread count:', response.data.unread_count);
+      
       setNotifications(response.data.notifications || []);
       setUnreadCount(response.data.unread_count || 0);
+      
+      if (response.data.notifications?.length === 0) {
+        console.log('ℹ️ No notifications returned from API');
+      }
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      console.error('❌ Failed to fetch notifications:', error);
+      console.error('❌ Error response:', error.response);
+      console.error('❌ Error status:', error.response?.status);
+      console.error('❌ Error data:', error.response?.data);
+      setApiError(error.message);
+      toast.error('Failed to load notifications');
     } finally {
       setLoading(false);
     }
@@ -53,38 +86,43 @@ const NotificationBell = () => {
 
   const fetchUnreadCount = async () => {
     try {
+      console.log('🔢 Fetching unread count...');
       const response = await api.get('/notifications/unread-count');
+      console.log('✅ Unread count response:', response.data);
       setUnreadCount(response.data.unread_count || 0);
     } catch (error) {
-      console.error('Failed to fetch unread count:', error);
+      console.error('❌ Failed to fetch unread count:', error);
     }
   };
 
   const markAsRead = async (notificationId) => {
     try {
+      console.log('📝 Marking notification as read:', notificationId);
       await api.put(`/notifications/${notificationId}/read`);
       setNotifications(notifications.map(n => 
         n.id === notificationId ? { ...n, is_read: true } : n
       ));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('Failed to mark as read:', error);
+      console.error('❌ Failed to mark as read:', error);
     }
   };
 
   const markAllAsRead = async () => {
     try {
+      console.log('📝 Marking all notifications as read');
       await api.put('/notifications/read-all');
       setNotifications(notifications.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
       toast.success('All notifications marked as read');
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      console.error('❌ Failed to mark all as read:', error);
     }
   };
 
   const deleteNotification = async (notificationId) => {
     try {
+      console.log('🗑️ Deleting notification:', notificationId);
       await api.delete(`/notifications/${notificationId}`);
       setNotifications(notifications.filter(n => n.id !== notificationId));
       if (notifications.find(n => n.id === notificationId)?.is_read === false) {
@@ -92,7 +130,7 @@ const NotificationBell = () => {
       }
       toast.success('Notification deleted');
     } catch (error) {
-      console.error('Failed to delete notification:', error);
+      console.error('❌ Failed to delete notification:', error);
       toast.error(error.response?.data?.error || 'Failed to delete notification');
     }
   };
@@ -118,18 +156,24 @@ const NotificationBell = () => {
   };
 
   const getTimeAgo = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now - date) / 1000);
+    if (!dateString) return 'unknown';
     
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const seconds = Math.floor((now - date) / 1000);
+      
+      if (seconds < 60) return 'just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      if (days < 7) return `${days}d ago`;
+      return date.toLocaleDateString();
+    } catch (e) {
+      return 'unknown';
+    }
   };
 
   const handleSendClick = () => {
@@ -137,14 +181,33 @@ const NotificationBell = () => {
     setShowSendModal(true);
   };
 
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated) {
+    console.log('🚫 Not authenticated, returning null');
+    return null;
+  }
+
+  // TEMPORARY: Show mock data if no notifications (for testing)
+  const displayNotifications = notifications.length > 0 ? notifications : [
+    {
+      id: 999,
+      title: "Debug Mode",
+      message: "No real notifications. Check console for API errors.",
+      created_at: new Date().toISOString(),
+      is_read: false,
+      type: "system_announcement",
+      sender_name: "System"
+    }
+  ];
 
   return (
     <>
       <div className="relative" ref={dropdownRef}>
         {/* Bell Icon */}
         <button
-          onClick={() => setShowDropdown(!showDropdown)}
+          onClick={() => {
+            console.log('🔔 Bell clicked');
+            setShowDropdown(!showDropdown);
+          }}
           className="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none transition-colors"
           title="Notifications"
         >
@@ -166,8 +229,11 @@ const NotificationBell = () => {
             {/* Header */}
             <div className="p-3 border-b border-gray-200 bg-gray-50">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold text-gray-700">Notifications</h3>
-                {unreadCount > 0 && (
+                <h3 className="font-semibold text-gray-700">
+                  Notifications 
+                  {apiError && <span className="ml-2 text-xs text-red-500">(Error)</span>}
+                </h3>
+                {unreadCount > 0 && user?.role !== 'student' && (
                   <button
                     onClick={markAllAsRead}
                     className="text-xs text-primary-600 hover:text-primary-700 font-medium"
@@ -176,6 +242,17 @@ const NotificationBell = () => {
                   </button>
                 )}
               </div>
+              {apiError && (
+                <div className="mt-1 text-xs text-red-500">
+                  API Error: {apiError}
+                  <button 
+                    onClick={fetchNotifications}
+                    className="ml-2 text-primary-600 underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Send Notification Button for Teachers/Admins */}
@@ -198,14 +275,20 @@ const NotificationBell = () => {
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
                   <p className="mt-2 text-sm">Loading...</p>
                 </div>
-              ) : notifications.length === 0 ? (
+              ) : notifications.length === 0 && !apiError ? (
                 <div className="p-8 text-center text-gray-500">
                   <FiBellOff className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                   <p className="text-sm">No notifications</p>
                   <p className="text-xs text-gray-400 mt-1">You're all caught up!</p>
+                  <button 
+                    onClick={fetchNotifications}
+                    className="mt-2 text-xs text-primary-600 hover:text-primary-700"
+                  >
+                    Refresh
+                  </button>
                 </div>
               ) : (
-                notifications.map((notification) => (
+                displayNotifications.map((notification) => (
                   <div
                     key={notification.id}
                     className={`p-3 border-b border-gray-100 hover:bg-gray-50 transition ${
@@ -242,8 +325,8 @@ const NotificationBell = () => {
                                 Mark read
                               </button>
                             )}
-                            {/* Only show delete button for admin or teacher who sent it */}
-                            {(user?.role === 'admin' || (user?.role === 'teacher' && notification.sender_id === user?.id)) && (
+                            {/* Only show delete button for admins */}
+                            {user?.role === 'admin' && (
                               <button
                                 onClick={() => deleteNotification(notification.id)}
                                 className="text-xs text-red-600 hover:text-red-700 font-medium"
