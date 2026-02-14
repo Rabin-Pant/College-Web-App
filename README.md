@@ -110,10 +110,10 @@ A comprehensive college management system with role-based access control for **A
 ```bash
 git clone https://github.com/yourusername/college-app.git
 cd college-app
-
-2️⃣ Backend Setup
+```
+### 2️⃣ Backend Setup
+```bash
 cd backend
-
 python -m venv venv
 
 # Windows
@@ -121,35 +121,27 @@ venv\Scripts\activate
 
 # Linux/Mac
 source venv/bin/activate
-
 pip install -r requirements.txt
-
 cp .env.example .env
-
 mysql -u root -p < models/new_schema.sql
 
 # Optional sample data
 python create_sample_data_final_v2.py
-
 python app.py
 
-
 Backend runs at:
-
 http://localhost:5000
-
-3️⃣ Frontend Setup
+```
+### 3️⃣ Frontend Setup
+```bash
 cd frontend
 npm install
-
 echo "REACT_APP_API_URL=http://localhost:5000/api" > .env
-
 npm start
 
-
 Frontend runs at:
-
 http://localhost:3000
+```
 
 👤 Default Users
 Role	Email	Password	Description
