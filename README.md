@@ -91,7 +91,8 @@ A comprehensive college management system with role-based access control for **A
 ### Database
 - MySQL 8.0 / MariaDB 11.8
 
-📁 Project Structure
+
+### 📁 Project Structure
 ```bash
 college-app/
 ├── backend/                           # Flask Backend
