@@ -144,6 +144,7 @@ http://localhost:3000
 ```
 
 👤 Default Users
+```bash
 Role	Email	Password	Description
 Admin	admin@yourcollege.edu
 	Admin@123	Full system access
@@ -151,7 +152,10 @@ Teacher	teacher@yourcollege.edu
 	Test@123	Dr. John Smith
 Student	student@yourcollege.edu
 	Test@123	Jane Doe
+```
+
 📚 API Documentation
+```bash
 Authentication
 POST   /api/auth/register
 POST   /api/auth/login
@@ -160,10 +164,11 @@ GET    /api/auth/profile
 PUT    /api/auth/profile
 PUT    /api/auth/change-password
 
-
 Admin, Teacher, Student, and Notification endpoints are available under /api/.
+```
 
 📦 Building for Production
+```bash
 Backend (Linux/Mac)
 pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:5000 app:app
@@ -175,9 +180,10 @@ waitress-serve --port=5000 app:app
 Frontend
 npm run build
 npx serve -s build -l 3000
+```
 
 🐛 Known Issues
-
+```bash
 Email verification requires SMTP configuration
 
 File upload size limited to 50MB
@@ -185,9 +191,10 @@ File upload size limited to 50MB
 Zoom integration requires manual link entry
 
 Missing database tables may cause 500 errors
+```
 
 🗺️ Roadmap
-
+```bash
 Add email notifications
 
 Implement Zoom API integration
@@ -199,9 +206,10 @@ Create React Native mobile app
 Add analytics dashboard
 
 Add PDF/Excel export functionality
+```
 
 👨‍💻 Author
-
+```bash
 Rabin Pant
 GitHub: https://github.com/Rabin-Pant
 ```
