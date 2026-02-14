@@ -25,6 +25,7 @@ import TeacherDashboard from './components/teacher/Dashboard';
 import TeacherSectionView from './components/teacher/SectionView';
 import TeacherSections from './components/teacher/Sections';
 import TeacherSchedule from './components/teacher/Schedule';
+import TeacherAttendance from './components/teacher/TeacherAttendance';
 import CreateAssignment from './components/teacher/CreateAssignment';
 import GradeSubmissions from './components/teacher/GradeSubmissions';
 import UploadMaterial from './components/teacher/UploadMaterial';
@@ -128,12 +129,14 @@ function AppContent() {
               <TeacherProfile />
             </RoleRoute>
           } />
-          <Route path="/teacher/section/:sectionId/take-attendance" element={
-  <RoleRoute allowedRoles={['teacher', 'admin']}>
-    <TakeAttendanceModal />
-  </RoleRoute>
-} />
-
+          
+          {/* ✅ ATTENDANCE PAGE ROUTE - FIXES 404 ERROR */}
+          <Route path="/teacher/section/:sectionId/attendance" element={
+            <RoleRoute allowedRoles={['teacher', 'admin']}>
+              <TeacherAttendance />
+            </RoleRoute>
+          } />
+          
           {/* PARAMETERIZED ROUTES - AFTER SPECIFIC ONES */}
           <Route path="/teacher/section/:sectionId/create-assignment" element={
             <RoleRoute allowedRoles={['teacher', 'admin']}>

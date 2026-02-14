@@ -6,7 +6,7 @@ import {
   FiBook, FiFile, FiVideo, FiBell,
   FiCheckCircle, FiXCircle, FiUserCheck,
   FiDownload, FiEdit2, FiTrash2, FiMapPin,
-  FiClock
+  FiClock, FiArrowLeft
 } from 'react-icons/fi';
 import Loader from '../common/Loader';
 import SendNotificationModal from '../notifications/SendNotificationModal';
@@ -29,11 +29,18 @@ const TeacherSectionView = () => {
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
 
   useEffect(() => {
-    fetchSectionData();
+    if (sectionId) {
+      fetchSectionData();
+    } else {
+      toast.error('Invalid section ID');
+      navigate('/teacher/dashboard');
+    }
   }, [sectionId]);
 
   const fetchSectionData = async () => {
     try {
+      console.log('📡 Fetching section data for ID:', sectionId);
+      
       const response = await api.get(`/teacher/sections/${sectionId}`);
       setSection(response.data.section);
       setStudents(response.data.students || []);
@@ -100,11 +107,20 @@ const TeacherSectionView = () => {
   if (!section) return <div>Section not found</div>;
 
   const sortedSchedule = [...schedule].sort((a, b) => 
-    getDayOrder(a.day) - getDayOrder(b.day) || a.start_time.localeCompare(b.start_time)
+    getDayOrder(a.day) - getDayOrder(b.day) || a.start_time?.localeCompare(b.start_time || '')
   );
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <button
+        onClick={() => navigate('/teacher/sections')}
+        className="flex items-center text-gray-600 hover:text-gray-900 mb-2"
+      >
+        <FiArrowLeft className="mr-2" />
+        Back to My Sections
+      </button>
+
       {/* Section Header */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-start">
@@ -115,6 +131,7 @@ const TeacherSectionView = () => {
             </p>
           </div>
           <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
+            {/* Take Attendance Button - This opens the modal */}
             <button
               onClick={() => setShowAttendanceModal(true)}
               className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center"
@@ -122,6 +139,8 @@ const TeacherSectionView = () => {
               <FiUsers className="mr-2" />
               Take Attendance
             </button>
+            
+            {/* Schedule Zoom Button */}
             <button
               onClick={() => setShowZoomModal(true)}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
@@ -129,6 +148,8 @@ const TeacherSectionView = () => {
               <FiVideo className="mr-2" />
               Schedule Zoom
             </button>
+            
+            {/* Send Notification Button */}
             <button
               onClick={() => setShowSendModal(true)}
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center"
@@ -179,12 +200,12 @@ const TeacherSectionView = () => {
                 <div className="w-24 font-medium text-gray-700">{sch.day}</div>
                 <div className="flex-1 flex items-center">
                   <FiClock className="mr-2 text-gray-400" />
-                  {sch.start_time} - {sch.end_time}
+                  <span>{sch.start_time?.substring(0,5) || 'TBA'} - {sch.end_time?.substring(0,5) || 'TBA'}</span>
                 </div>
                 {sch.room && (
-                  <div className="text-gray-600 flex items-center">
+                  <div className="flex items-center text-gray-600">
                     <FiMapPin className="mr-2" />
-                    Room {sch.room}
+                    <span>Room {sch.room}</span>
                   </div>
                 )}
               </div>
@@ -297,7 +318,7 @@ const TeacherSectionView = () => {
                       to={`/teacher/assignment/${assignment.id}/grade`}
                       className="text-primary-600 hover:text-primary-700 text-sm"
                     >
-                      Grade ({assignment.submitted_count || 0} submissions)
+                      Grade ({assignment.pending_submissions || 0} pending)
                     </Link>
                     <button className="text-gray-400 hover:text-red-600">
                       <FiTrash2 className="h-4 w-4" />
