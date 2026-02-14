@@ -151,6 +151,7 @@ Admin	admin@yourcollege.edu    Admin@123  Full system access
 Teacher	teacher@yourcollege.edu  Test@123	Dr. John Smith
 	
 Student	student@yourcollege.edu  Test@123	Jane Doe
+
 ```
 
 📚 API Documentation
