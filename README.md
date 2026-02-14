@@ -1,190 +1,140 @@
-🎓 College Management System
+# 🎓 College Management System
+
 <div align="center">
 
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Python](https://img.shields.io/badge/python-3.13-green.svg)
+![Flask](https://img.shields.io/badge/flask-2.3.3-red.svg)
+![React](https://img.shields.io/badge/react-18.2.0-61dafb.svg)
+![MySQL](https://img.shields.io/badge/mysql-8.0-orange.svg)
+![License](https://img.shields.io/badge/license-MIT-yellow.svg)
 
+A comprehensive college management system with role-based access control for **Admins**, **Teachers**, and **Students**. Built with Flask backend and React frontend.
 
-
-
-
-A full-stack College Management System with role-based access control for Admins, Teachers, and Students.
-Built using Flask (Backend) and React (Frontend) with a MySQL database.
-
-🚀 Features
- • 🛠 Tech Stack
- • ⚙️ Installation
- • 📚 API Documentation
- • 📦 Production Build
+[Features](#-features) • [Tech Stack](#-tech-stack) • [Installation](#-installation) • [API Documentation](#-api-documentation) • [Production Build](#-building-for-production)
 
 </div>
-✨ Features
-👑 Admin
 
-Full system management & monitoring
-
-Course & subject management
-
-Section creation with capacity control
-
-Assign teachers to sections
-
-Approve/reject student enrollments
-
-User management (create, verify, delete)
-
-System-wide announcements
-
-Analytics dashboard & reports
-
-👨‍🏫 Teacher
-
-View assigned sections
-
-Upload study materials (PDF, PPT, video, links)
-
-Create & publish assignments
-
-Grade submissions with feedback
-
-Take attendance (bulk support)
-
-Schedule Zoom meetings
-
-Approve enrollment requests
-
-Send class notifications
-
-Track student progress
-
-👨‍🎓 Student
-
-Browse & request enrollment
-
-View enrolled sections
-
-Access materials
-
-Submit assignments (text + file upload)
-
-View grades & feedback
-
-Join Zoom meetings
-
-Track attendance
-
-Receive notifications
-
-📱 Additional System Features
-
-JWT Authentication
-
-Optional Email Verification
-
-Real-time notifications
-
-File upload with progress tracking
-
-Fully responsive design
-
-Dark mode support
-
-Calendar view for deadlines
-
-Search & filtering system
-
-🛠 Tech Stack
-🔹 Backend
-
-Python 3.13
-
-Flask 2.3.3
-
-Flask-JWT-Extended
-
-Flask-CORS
-
-Flask-MySQLdb
-
-PyMySQL
-
-bcrypt
-
-python-dotenv
-
-Werkzeug
-
-🔹 Frontend
-
-React 18
-
-React Router 6
-
-Tailwind CSS
-
-Axios
-
-React Hot Toast
-
-React Dropzone
-
-React DatePicker
-
-Headless UI
-
-Heroicons
-
-🔹 Database
-
-MySQL 8.0 / MariaDB 11.8
-
-📋 Prerequisites
-
-Python 3.8+
-
-Node.js 16+
-
-MySQL 8.0+ or MariaDB 10.5+
-
-Git
-
-npm or yarn
-
-⚙️ Installation
-1️⃣ Clone Repository
+---
+
+## ✨ Features
+
+### 👑 Admin
+- ✅ Full system control and monitoring
+- ✅ Course & Subject management
+- ✅ Section creation with capacity control
+- ✅ Teacher assignment to sections
+- ✅ Student enrollment approval/rejection
+- ✅ User management (create, verify, delete)
+- ✅ System-wide announcements
+- ✅ Analytics and reports dashboard
+
+### 👨‍🏫 Teacher
+- ✅ View assigned sections
+- ✅ Upload study materials (PDF, PPT, videos, links)
+- ✅ Create assignments with due dates and rubrics
+- ✅ Grade submissions with feedback
+- ✅ Take attendance
+- ✅ Schedule Zoom meetings
+- ✅ Approve/reject enrollment requests
+- ✅ Send notifications to students
+- ✅ View class roster and student progress
+
+### 👨‍🎓 Student
+- ✅ Browse available sections
+- ✅ Request enrollment in sections
+- ✅ View enrolled sections and schedule
+- ✅ Access study materials
+- ✅ Submit assignments (text + file upload)
+- ✅ View grades and feedback
+- ✅ Join Zoom meetings
+- ✅ Receive notifications
+- ✅ Track attendance
+
+### 📱 Additional Features
+- ✅ JWT Authentication
+- ✅ Email verification (optional)
+- ✅ Real-time notifications
+- ✅ File upload with progress
+- ✅ Responsive design (mobile-friendly)
+- ✅ Dark mode support
+- ✅ Calendar view of deadlines
+- ✅ Search and filter functionality
+
+---
+
+## 🛠️ Tech Stack
+
+### Backend
+- Python 3.13
+- Flask 2.3.3
+- Flask-JWT-Extended
+- Flask-CORS
+- Flask-MySQLdb
+- PyMySQL
+- Werkzeug
+- python-dotenv
+- bcrypt
+
+### Frontend
+- React 18
+- React Router 6
+- Tailwind CSS
+- Axios
+- React Hot Toast
+- React Icons
+- React Dropzone
+- React DatePicker
+- Headless UI
+- Heroicons
+
+### Database
+- MySQL 8.0 / MariaDB 11.8
+
+---
+
+## 📋 Prerequisites
+
+- Python 3.8 or higher
+- Node.js 16 or higher
+- MySQL 8.0 or MariaDB 10.5 or higher
+- Git
+- npm or yarn
+
+---
+
+## 🚀 Installation
+
+### 1️⃣ Clone the Repository
+
+```bash
 git clone https://github.com/yourusername/college-app.git
 cd college-app
 
 2️⃣ Backend Setup
 cd backend
 
-# Create virtual environment
 python -m venv venv
 
-# Activate
-# Windows:
+# Windows
 venv\Scripts\activate
-# Linux/Mac:
+
+# Linux/Mac
 source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
 
-# Create .env
 cp .env.example .env
 
-
-Update .env with your database credentials.
-
-# Create database
 mysql -u root -p < models/new_schema.sql
 
-# (Optional) Add sample data
+# Optional sample data
 python create_sample_data_final_v2.py
 
-# Run backend
 python app.py
 
 
-Backend runs on:
+Backend runs at:
 
 http://localhost:5000
 
@@ -192,79 +142,34 @@ http://localhost:5000
 cd frontend
 npm install
 
-# Create .env
 echo "REACT_APP_API_URL=http://localhost:5000/api" > .env
 
 npm start
 
 
-Frontend runs on:
+Frontend runs at:
 
 http://localhost:3000
 
-👤 Default Test Accounts
-Role	Email	Password
+👤 Default Users
+Role	Email	Password	Description
 Admin	admin@yourcollege.edu
-	Admin@123
+	Admin@123	Full system access
 Teacher	teacher@yourcollege.edu
-	Test@123
+	Test@123	Dr. John Smith
 Student	student@yourcollege.edu
-	Test@123
-📁 Project Structure
-college-app/
-│
-├── backend/
-│   ├── app.py
-│   ├── config.py
-│   ├── models/
-│   ├── routes/
-│   ├── utils/
-│   └── requirements.txt
-│
-└── frontend/
-    ├── public/
-    ├── src/
-    ├── package.json
-    └── tailwind.config.js
-
+	Test@123	Jane Doe
 📚 API Documentation
 Authentication
 POST   /api/auth/register
 POST   /api/auth/login
 POST   /api/auth/refresh
 GET    /api/auth/profile
+PUT    /api/auth/profile
 PUT    /api/auth/change-password
 
-Admin
-GET    /api/admin/users
-POST   /api/admin/users
-PUT    /api/admin/users/:id
-DELETE /api/admin/users/:id
-...
 
-Teacher
-GET    /api/teacher/sections
-POST   /api/teacher/assignments
-PUT    /api/teacher/grading/:id
-...
-
-Student
-GET    /api/student/sections
-POST   /api/student/enrollments
-POST   /api/student/assignments/:id/submit
-...
-
-
-Full endpoint list available in project files.
-
-🚦 Running Tests
-Backend
-cd backend
-python -m pytest
-
-Frontend
-cd frontend
-npm test
+Admin, Teacher, Student, and Notification endpoints are available under /api/.
 
 📦 Building for Production
 Backend (Linux/Mac)
@@ -279,44 +184,38 @@ Frontend
 npm run build
 npx serve -s build -l 3000
 
-🗺️ Roadmap
-
-Email notifications
-
-Zoom API integration
-
-Built-in video conferencing
-
-React Native mobile app
-
-Discussion forums
-
-Real-time chat
-
-Grade analytics dashboard
-
-PDF/Excel export support
-
 🐛 Known Issues
 
-SMTP configuration required for email verification
+Email verification requires SMTP configuration
 
-File upload limit: 50MB
+File upload size limited to 50MB
 
-Zoom integration requires manual link
+Zoom integration requires manual link entry
 
-Missing DB tables may cause 500 errors
+Missing database tables may cause 500 errors
+
+🗺️ Roadmap
+
+Add email notifications
+
+Implement Zoom API integration
+
+Add real-time chat
+
+Create React Native mobile app
+
+Add analytics dashboard
+
+Add PDF/Excel export functionality
 
 👨‍💻 Author
 
 Rabin Pant
 GitHub: https://github.com/Rabin-Pant
 
-Email: rabinpant@194gmail.com
-
 <div align="center">
 
 Made with ❤️ by Rabin Pant
 ⭐ Star this repository if you found it helpful!
 
-</div>
+</div> ```
