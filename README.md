@@ -96,10 +96,12 @@ A comprehensive college management system with role-based access control for **A
 ```bash
 college-app/
 ├── backend/                           # Flask Backend
-│   ├── app.py                        # Main application
+│   ├── app.py                         # Main application
 │   ├── config.py                      # Configuration
 │   ├── requirements.txt               # Python dependencies
 │   ├── .env.example                   # Environment variables template
+    ├── create_admin                   #Sets email_verified = True
+    ├── create_sample_data_final_v2    #Creates all necessary sample data
 │   ├── models/                        # Database models
 │   │   ├── user.py
 │   │   ├── course.py
@@ -108,7 +110,7 @@ college-app/
 │   │   ├── enrollment.py
 │   │   ├── assignment.py
 │   │   └── ...
-│   ├── routes/                        # API routes
+│   ├── routes/                         # API routes
 │   │   ├── admin/                      # Admin routes
 │   │   ├── teacher/                    # Teacher routes
 │   │   └── student/                    # Student routes
