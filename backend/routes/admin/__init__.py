@@ -7,6 +7,7 @@ from routes.admin.schedules import admin_schedules_bp
 from routes.admin.users import admin_users_bp
 from routes.admin.stats import admin_stats_bp
 from routes.admin.reports import admin_reports_bp
+from routes.admin.settings import admin_settings_bp
 
 __all__ = [
     'admin_courses_bp',
@@ -17,5 +18,6 @@ __all__ = [
     'admin_schedules_bp',
     'admin_users_bp',
     'admin_stats_bp',
-    'admin_reports_bp'
+    'admin_reports_bp',
+    'admin_settings_bp'
 ]

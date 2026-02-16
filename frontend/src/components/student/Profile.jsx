@@ -5,7 +5,7 @@ import api from '../../services/api';
 import { 
   FiUser, FiMail, FiBook, FiCalendar, FiAward,
   FiEdit2, FiClock, FiDownload, FiUpload, FiLogOut,
-  FiSettings, FiUsers, FiCheckCircle
+  FiSettings, FiUsers, FiCheckCircle, FiMapPin
 } from 'react-icons/fi';
 import Loader from '../common/Loader';
 import toast from 'react-hot-toast';
@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 const StudentProfile = () => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({
     enrolled_sections: 0,
@@ -28,11 +29,11 @@ const StudentProfile = () => {
 
   const fetchProfile = async () => {
     try {
-      // Fetch user profile
       const profileRes = await api.get('/auth/profile');
+      console.log('📡 Profile data:', profileRes.data);
+      console.log('📸 Profile pic path:', profileRes.data.profile_pic);
       setProfile(profileRes.data);
       
-      // Fetch student stats from multiple endpoints
       try {
         const [sectionsRes, pendingRes, assignmentsRes, gradesRes] = await Promise.all([
           api.get('/student/sections'),
@@ -41,12 +42,10 @@ const StudentProfile = () => {
           api.get('/student/grades/recent')
         ]);
         
-        // Calculate stats from the responses
         const enrolledCount = sectionsRes.data.sections?.length || 0;
         const pendingCount = pendingRes.data.enrollments?.length || 0;
         const upcomingCount = assignmentsRes.data.assignments?.length || 0;
         
-        // Calculate average grade from recent grades
         const grades = gradesRes.data.grades || [];
         const avgGrade = grades.length > 0 
           ? grades.reduce((sum, g) => sum + (g.grade || 0), 0) / grades.length 
@@ -61,14 +60,6 @@ const StudentProfile = () => {
         });
       } catch (statsError) {
         console.error('Failed to fetch stats:', statsError);
-        // Set default stats if endpoints fail
-        setStats({
-          enrolled_sections: 0,
-          pending_requests: 0,
-          completed_assignments: 0,
-          average_grade: 0,
-          total_assignments: 0
-        });
       }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
@@ -82,18 +73,40 @@ const StudentProfile = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a valid image file (JPEG, PNG, GIF, WEBP)');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
     const formData = new FormData();
     formData.append('profile_pic', file);
 
     try {
-      await api.put('/auth/profile', formData, {
+      setUploading(true);
+      const response = await api.post('/auth/profile/picture', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      console.log('✅ Upload response:', response.data);
       toast.success('Profile picture updated!');
       fetchProfile();
     } catch (error) {
-      toast.error('Failed to update profile picture');
+      console.error('❌ Upload error:', error);
+      toast.error(error.response?.data?.error || 'Failed to update profile picture');
+    } finally {
+      setUploading(false);
     }
+  };
+
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `http://127.0.0.1:5000/uploads/${path}`;
   };
 
   if (loading) return <Loader />;
@@ -109,9 +122,15 @@ const StudentProfile = () => {
               <div className="h-32 w-32 rounded-full border-4 border-white bg-white overflow-hidden">
                 {profile?.profile_pic ? (
                   <img 
-                    src={profile.profile_pic} 
-                    alt={profile.name} 
+                    src={getImageUrl(profile.profile_pic)}
+                    alt={profile.name}
                     className="h-full w-full object-cover"
+                    onError={(e) => {
+                      console.error('Image failed to load:', e.target.src);
+                      e.target.onerror = null;
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = `<div class="h-full w-full bg-green-100 flex items-center justify-center"><svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" class="h-16 w-16 text-green-600" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg></div>`;
+                    }}
                   />
                 ) : (
                   <div className="h-full w-full bg-green-100 flex items-center justify-center">
@@ -119,14 +138,19 @@ const StudentProfile = () => {
                   </div>
                 )}
               </div>
-              <label className="absolute bottom-0 right-0 bg-green-600 text-white p-2 rounded-full cursor-pointer hover:bg-green-700">
-                <FiUpload className="h-4 w-4" />
+              <label className="absolute bottom-0 right-0 bg-green-600 text-white p-2 rounded-full cursor-pointer hover:bg-green-700 transition">
                 <input 
                   type="file" 
                   className="hidden" 
                   accept="image/*"
                   onChange={handleProfilePicUpload}
+                  disabled={uploading}
                 />
+                {uploading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                ) : (
+                  <FiUpload className="h-4 w-4" />
+                )}
               </label>
             </div>
             <div className="mt-4 md:mt-0 md:ml-6 flex-1">
@@ -281,13 +305,6 @@ const StudentProfile = () => {
               <span>Edit Profile</span>
               <FiSettings className="text-gray-400" />
             </Link>
-            <Link
-              to="/profile/change-password"
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
-            >
-              <span>Change Password</span>
-              <FiClock className="text-gray-400" />
-            </Link>
             <button
               onClick={logout}
               className="w-full flex items-center justify-between p-3 bg-red-50 rounded-lg hover:bg-red-100 text-red-600"
@@ -295,20 +312,6 @@ const StudentProfile = () => {
               <span>Sign Out</span>
               <FiLogOut className="text-red-600" />
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Grades */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Grades</h2>
-        <div className="space-y-3">
-          <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-            <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-            <div className="flex-1">
-              <p className="text-sm text-gray-900">No grades available yet</p>
-              <p className="text-xs text-gray-500">Your recent grades will appear here</p>
-            </div>
           </div>
         </div>
       </div>

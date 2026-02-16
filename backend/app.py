@@ -31,6 +31,7 @@ from routes.admin.schedules import admin_schedules_bp
 from routes.admin.users import admin_users_bp
 from routes.admin.stats import admin_stats_bp
 from routes.admin.reports import admin_reports_bp
+from routes.admin.settings import admin_settings_bp
 
 # ============ TEACHER SUB-ROUTES ============
 from routes.teacher.sections import teacher_sections_bp
@@ -97,6 +98,7 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_users_bp, url_prefix='/api/admin/users')
     app.register_blueprint(admin_stats_bp, url_prefix='/api/admin/stats')
     app.register_blueprint(admin_reports_bp, url_prefix='/api/admin/reports')
+    app.register_blueprint(admin_settings_bp, url_prefix='/api/admin/settings')
     
     # ============ TEACHER SUB-ROUTES ============
     app.register_blueprint(teacher_sections_bp, url_prefix='/api/teacher/sections')

@@ -5,10 +5,13 @@ from utils.database import mysql
 from utils.auth_helpers import generate_verification_token, generate_student_id, generate_employee_id
 from utils.validators import validate_email, validate_college_email, validate_password, validate_required_fields
 from utils.email import send_verification_email
+from utils.file_handler import save_file, allowed_image, validate_file_size, get_file_url
+from utils.file_handler import human_readable_size
 import random
 import string
 import re
 from datetime import timedelta
+import os
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -149,6 +152,8 @@ def register():
         
     except Exception as e:
         print(f"Registration error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Registration failed. Please try again.'}), 500
 
 
@@ -224,6 +229,11 @@ def login():
             if profile:
                 profile_data = profile
         
+        # Generate full URL for profile picture if exists
+        profile_pic_url = None
+        if user['profile_pic']:
+            profile_pic_url = get_file_url(user['profile_pic'])
+        
         return jsonify({
             'access_token': access_token,
             'refresh_token': refresh_token,
@@ -233,13 +243,288 @@ def login():
                 'name': user['name'],
                 'role': user['role'],
                 'profile_pic': user['profile_pic'],
+                'profile_pic_url': profile_pic_url,
                 **profile_data
             }
         }), 200
         
     except Exception as e:
         print(f"Login error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Login failed. Please try again.'}), 500
+
+
+# ============ PROFILE PICTURE UPLOAD ============
+
+@auth_bp.route('/profile/picture', methods=['POST'])
+@jwt_required()
+def upload_profile_picture():
+    """Upload profile picture separately"""
+    try:
+        user_id = get_jwt_identity()
+        
+        print(f"📡 Profile picture upload requested by user {user_id}")
+        
+        # Check if file was uploaded
+        if 'profile_pic' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+            
+        file = request.files['profile_pic']
+        
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+            
+        print(f"📁 File received: {file.filename}")
+        print(f"📏 Content type: {file.content_type}")
+        
+        # Validate file type (only images)
+        if not allowed_image(file.filename):
+            return jsonify({'error': 'File type not allowed. Please upload an image (PNG, JPG, JPEG, GIF, WEBP).'}), 400
+            
+        # Validate file size (max 5MB)
+        is_valid_size, file_size = validate_file_size(file, max_size_mb=5)
+        if not is_valid_size:
+            return jsonify({'error': f'File size too large. Maximum size is 5MB. Your file: {human_readable_size(file_size)}'}), 400
+        
+        # Save file using file handler
+        file_info = save_file(file, subfolder='profile_pics', allowed_extensions={'png', 'jpg', 'jpeg', 'gif', 'webp'})
+        
+        if not file_info:
+            return jsonify({'error': 'Failed to save file'}), 500
+            
+        print(f"✅ File saved: {file_info}")
+        
+        # Get the file path from the returned dictionary
+        file_path = file_info['file_path']
+        
+        # Update user profile with new picture path
+        cursor = mysql.connection.cursor()
+        cursor.execute("UPDATE users SET profile_pic = %s WHERE id = %s", 
+                      (file_path, user_id))
+        mysql.connection.commit()
+        cursor.close()
+        
+        # Return the full URL for the profile picture
+        profile_pic_url = get_file_url(file_path)
+        
+        return jsonify({
+            'message': 'Profile picture updated successfully',
+            'profile_pic': file_path,
+            'profile_pic_url': profile_pic_url
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Profile pic upload error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@auth_bp.route('/profile/picture', methods=['DELETE'])
+@jwt_required()
+def delete_profile_picture():
+    """Delete profile picture"""
+    try:
+        user_id = get_jwt_identity()
+        
+        cursor = mysql.connection.cursor()
+        
+        # Get current profile picture
+        cursor.execute("SELECT profile_pic FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        
+        if user and user['profile_pic']:
+            # Delete file from filesystem
+            from utils.file_handler import delete_file
+            delete_file(user['profile_pic'])
+        
+        # Remove from database
+        cursor.execute("UPDATE users SET profile_pic = NULL WHERE id = %s", (user_id,))
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({'message': 'Profile picture deleted successfully'}), 200
+        
+    except Exception as e:
+        print(f"Error deleting profile picture: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============ PROFILE MANAGEMENT ============
+
+@auth_bp.route('/profile', methods=['GET'])
+@jwt_required()
+def get_profile():
+    """Get current user profile"""
+    try:
+        user_id = get_jwt_identity()
+        cursor = mysql.connection.cursor()
+        
+        # Get base user info
+        cursor.execute("""
+            SELECT id, email, name, role, profile_pic, bio, department, 
+                   email_verified, created_at
+            FROM users WHERE id = %s
+        """, (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            cursor.close()
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get role-specific profile
+        if user['role'] == 'teacher':
+            cursor.execute("""
+                SELECT employee_id, department, office_hours, qualifications
+                FROM teacher_profiles WHERE user_id = %s
+            """, (user_id,))
+            profile = cursor.fetchone()
+            if profile:
+                user.update(profile)
+                
+        elif user['role'] == 'student':
+            cursor.execute("""
+                SELECT student_id, enrollment_year, major, minor, current_semester
+                FROM student_profiles WHERE user_id = %s
+            """, (user_id,))
+            profile = cursor.fetchone()
+            if profile:
+                user.update(profile)
+        
+        # Add full URL for profile picture
+        if user.get('profile_pic'):
+            user['profile_pic_url'] = get_file_url(user['profile_pic'])
+        
+        cursor.close()
+        return jsonify(user), 200
+        
+    except Exception as e:
+        print(f"Profile fetch error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@auth_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """Update user profile (text data only)"""
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        print(f"📡 Updating profile for user {user_id}")
+        print(f"📦 Data: {data}")
+        
+        cursor = mysql.connection.cursor()
+        
+        # Update user table
+        update_fields = []
+        update_values = []
+        
+        allowed_fields = ['name', 'bio', 'department']
+        for field in allowed_fields:
+            if field in data:
+                update_fields.append(f"{field} = %s")
+                update_values.append(data[field])
+        
+        if update_fields:
+            query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = %s"
+            update_values.append(user_id)
+            cursor.execute(query, tuple(update_values))
+            print(f"✅ Updated user fields: {update_fields}")
+        
+        # Update role-specific profile
+        cursor.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        
+        if user['role'] == 'teacher':
+            teacher_fields = []
+            teacher_values = []
+            if 'office_hours' in data:
+                teacher_fields.append("office_hours = %s")
+                teacher_values.append(data['office_hours'])
+            if 'qualifications' in data:
+                teacher_fields.append("qualifications = %s")
+                teacher_values.append(data['qualifications'])
+            if teacher_fields:
+                query = f"UPDATE teacher_profiles SET {', '.join(teacher_fields)} WHERE user_id = %s"
+                teacher_values.append(user_id)
+                cursor.execute(query, tuple(teacher_values))
+                print(f"✅ Updated teacher fields: {teacher_fields}")
+                
+        elif user['role'] == 'student':
+            student_fields = []
+            student_values = []
+            if 'major' in data:
+                student_fields.append("major = %s")
+                student_values.append(data['major'])
+            if 'minor' in data:
+                student_fields.append("minor = %s")
+                student_values.append(data['minor'])
+            if 'current_semester' in data:
+                student_fields.append("current_semester = %s")
+                student_values.append(data['current_semester'])
+            if student_fields:
+                query = f"UPDATE student_profiles SET {', '.join(student_fields)} WHERE user_id = %s"
+                student_values.append(user_id)
+                cursor.execute(query, tuple(student_values))
+                print(f"✅ Updated student fields: {student_fields}")
+        
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({'message': 'Profile updated successfully'}), 200
+        
+    except Exception as e:
+        print(f"❌ Profile update error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# ============ PASSWORD MANAGEMENT ============
+
+@auth_bp.route('/change-password', methods=['PUT'])
+@jwt_required()
+def change_password():
+    """Change user password"""
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        if not data.get('current_password') or not data.get('new_password'):
+            return jsonify({'error': 'Current password and new password required'}), 400
+        
+        # Verify current password
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT password FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        
+        if not check_password_hash(user['password'], data['current_password']):
+            cursor.close()
+            return jsonify({'error': 'Current password is incorrect'}), 401
+        
+        # Validate new password
+        is_valid, password_errors = validate_password(data['new_password'])
+        if not is_valid:
+            cursor.close()
+            return jsonify({'error': password_errors[0] if password_errors else 'Invalid password'}), 400
+        
+        # Update password
+        hashed_password = generate_password_hash(data['new_password'])
+        cursor.execute("UPDATE users SET password = %s WHERE id = %s", 
+                      (hashed_password, user_id))
+        
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({'message': 'Password changed successfully'}), 200
+        
+    except Exception as e:
+        print(f"Password change error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @auth_bp.route('/refresh', methods=['POST'])
@@ -348,165 +633,6 @@ def resend_verification():
         return jsonify({'error': 'Failed to resend verification'}), 500
 
 
-# ============ PROTECTED ENDPOINTS ============
-
-@auth_bp.route('/profile', methods=['GET'])
-@jwt_required()
-def get_profile():
-    """Get current user profile"""
-    try:
-        user_id = get_jwt_identity()
-        cursor = mysql.connection.cursor()
-        
-        # Get base user info
-        cursor.execute("""
-            SELECT id, email, name, role, profile_pic, bio, department, 
-                   email_verified, created_at
-            FROM users WHERE id = %s
-        """, (user_id,))
-        user = cursor.fetchone()
-        
-        if not user:
-            cursor.close()
-            return jsonify({'error': 'User not found'}), 404
-        
-        # Get role-specific profile
-        if user['role'] == 'teacher':
-            cursor.execute("""
-                SELECT employee_id, department, office_hours, qualifications
-                FROM teacher_profiles WHERE user_id = %s
-            """, (user_id,))
-            profile = cursor.fetchone()
-            if profile:
-                user.update(profile)
-                
-        elif user['role'] == 'student':
-            cursor.execute("""
-                SELECT student_id, enrollment_year, major, minor, current_semester
-                FROM student_profiles WHERE user_id = %s
-            """, (user_id,))
-            profile = cursor.fetchone()
-            if profile:
-                user.update(profile)
-        
-        cursor.close()
-        return jsonify(user), 200
-        
-    except Exception as e:
-        print(f"Profile fetch error: {e}")
-        return jsonify({'error': 'Failed to fetch profile'}), 500
-
-
-@auth_bp.route('/profile', methods=['PUT'])
-@jwt_required()
-def update_profile():
-    """Update user profile"""
-    try:
-        user_id = get_jwt_identity()
-        data = request.get_json()
-        cursor = mysql.connection.cursor()
-        
-        # Update user table
-        update_fields = []
-        update_values = []
-        
-        allowed_fields = ['name', 'bio', 'profile_pic', 'department']
-        for field in allowed_fields:
-            if field in data:
-                update_fields.append(f"{field} = %s")
-                update_values.append(data[field])
-        
-        if update_fields:
-            query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = %s"
-            update_values.append(user_id)
-            cursor.execute(query, tuple(update_values))
-        
-        # Update role-specific profile
-        cursor.execute("SELECT role FROM users WHERE id = %s", (user_id,))
-        user = cursor.fetchone()
-        
-        if user['role'] == 'teacher':
-            teacher_fields = []
-            teacher_values = []
-            if 'office_hours' in data:
-                teacher_fields.append("office_hours = %s")
-                teacher_values.append(data['office_hours'])
-            if 'qualifications' in data:
-                teacher_fields.append("qualifications = %s")
-                teacher_values.append(data['qualifications'])
-            if teacher_fields:
-                query = f"UPDATE teacher_profiles SET {', '.join(teacher_fields)} WHERE user_id = %s"
-                teacher_values.append(user_id)
-                cursor.execute(query, tuple(teacher_values))
-                
-        elif user['role'] == 'student':
-            student_fields = []
-            student_values = []
-            if 'major' in data:
-                student_fields.append("major = %s")
-                student_values.append(data['major'])
-            if 'minor' in data:
-                student_fields.append("minor = %s")
-                student_values.append(data['minor'])
-            if 'current_semester' in data:
-                student_fields.append("current_semester = %s")
-                student_values.append(data['current_semester'])
-            if student_fields:
-                query = f"UPDATE student_profiles SET {', '.join(student_fields)} WHERE user_id = %s"
-                student_values.append(user_id)
-                cursor.execute(query, tuple(student_values))
-        
-        mysql.connection.commit()
-        cursor.close()
-        
-        return jsonify({'message': 'Profile updated successfully'}), 200
-        
-    except Exception as e:
-        print(f"Profile update error: {e}")
-        return jsonify({'error': 'Failed to update profile'}), 500
-
-
-@auth_bp.route('/change-password', methods=['PUT'])
-@jwt_required()
-def change_password():
-    """Change user password"""
-    try:
-        user_id = get_jwt_identity()
-        data = request.get_json()
-        
-        if not data.get('current_password') or not data.get('new_password'):
-            return jsonify({'error': 'Current password and new password required'}), 400
-        
-        # Verify current password
-        cursor = mysql.connection.cursor()
-        cursor.execute("SELECT password FROM users WHERE id = %s", (user_id,))
-        user = cursor.fetchone()
-        
-        if not check_password_hash(user['password'], data['current_password']):
-            cursor.close()
-            return jsonify({'error': 'Current password is incorrect'}), 401
-        
-        # Validate new password
-        is_valid, password_errors = validate_password(data['new_password'])
-        if not is_valid:
-            cursor.close()
-            return jsonify({'error': password_errors[0] if password_errors else 'Invalid password'}), 400
-        
-        # Update password
-        hashed_password = generate_password_hash(data['new_password'])
-        cursor.execute("UPDATE users SET password = %s WHERE id = %s", 
-                      (hashed_password, user_id))
-        
-        mysql.connection.commit()
-        cursor.close()
-        
-        return jsonify({'message': 'Password changed successfully'}), 200
-        
-    except Exception as e:
-        print(f"Password change error: {e}")
-        return jsonify({'error': 'Failed to change password'}), 500
-
-
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
@@ -532,4 +658,4 @@ def delete_account():
         
     except Exception as e:
         print(f"Account deletion error: {e}")
-        return jsonify({'error': 'Failed to delete account'}), 500
+        return jsonify({'error': str(e)}), 500
