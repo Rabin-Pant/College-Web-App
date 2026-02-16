@@ -216,6 +216,6 @@ GitHub: https://github.com/Rabin-Pant
 <div align="center">
 
 Made with ❤️ by Rabin Pant
-⭐ Star this repository if you found it helpful!
+<h1>There are still some issue to be solve so this is not the final version of it. In near future i will solve all the bugs, errors and problem.</h1>
 
 </div> 
