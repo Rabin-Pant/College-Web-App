@@ -199,8 +199,6 @@ Add email notifications
 
 Implement Zoom API integration
 
-Add real-time chat
-
 Create React Native mobile app
 
 Add analytics dashboard
