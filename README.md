@@ -215,8 +215,8 @@ GitHub: https://github.com/Rabin-Pant
 ```
 <div align="center">
 
-Made with ❤️ by Rabin Pant
-<h1>I have finally found solved most of the bugs and issue. If you find any problem feel free to contact/report it to me.</h1>
+<h1>I have finally found and solved most of the bugs and issue. If you find any problem feel free to contact/report it to me.</h1>
 <h3>Email: rabinpant194@gmail.com</h3>
 
+Made with ❤️ by Rabin Pant
 </div> 
